@@ -1,9 +1,10 @@
 #include <Ultrasonic.h>
 
 // ----------- MISC. CONSTANTS -----------
-#define MIN_DISTANCE 100 //100 cm. 
-#define AVERAGE 30 //Moving average filter size
-#define SAMPLING_DELAY 50 //Delay between measurements
+#define MIN_DISTANCE 75  //75 cm. 
+#define MAX_DISTANCE 150 //150 cm.
+#define AVERAGE 5 //Moving average filter size
+#define SAMPLING_DELAY 20 //Delay between measurements
 
 
 // ----------- PIN-RELATED CONSTANTS -----------
@@ -15,16 +16,18 @@ const byte ECHO_R = 15;
 
 //Motors
 const byte MOTOR_L = 5;
-const byte MOTOR_R = 6;
+const byte MOTOR_R = 4;
 
-
+//Min distance potentiometer
+const byte DISTANCE_POT = A0;
 
 
 // ----------- MEAN AVERAGE DISTANCES ARRAYS -----------
 unsigned int distancesL[AVERAGE];
 unsigned int distancesR[AVERAGE];
 
-
+// ----------- CURRENT MIN DISTANCE -----------
+unsigned int minDistance;
 
 // ----------- ULTRASONIC SENSOR INSTANES -----------
 Ultrasonic pingL(TRIG_L, ECHO_L); //Trigger Pin, Echo Pin  
@@ -40,15 +43,16 @@ void filterInit(unsigned int startDist, unsigned int *distVector);
 unsigned int filterData(unsigned int newData, unsigned int *distVector);
 unsigned int sampleDistance(byte sensor);
 void setMotorStatus(unsigned int motor, unsigned int averageValue);
-
+unsigned int sampleSetPoint();
 
 
 void setup(){
-  Serial.begin(9600);
+  //Serial.begin(9600);
+  pinMode(DISTANCE_POT, INPUT);
   pingL.init();
   pingR.init();
-  filterInit(MIN_DISTANCE, distancesL);
-  filterInit(MIN_DISTANCE, distancesR);
+  filterInit(MAX_DISTANCE, distancesL);
+  filterInit(MAX_DISTANCE, distancesR);
   motorInit();
 }
 
@@ -105,7 +109,7 @@ unsigned int sampleDistance(byte sensor){
 }
 
 void setMotorStatus(unsigned int motor, unsigned int averageValue){
-  if(averageValue < MIN_DISTANCE){
+  if(averageValue < sampleSetPoint()){
     digitalWrite(motor, 1);
   }else{
     digitalWrite(motor, 0);
@@ -118,5 +122,12 @@ void checkSensorsAndRun(){
   r = filterData(sampleDistance(1), distancesR); //Right sensor
   setMotorStatus(MOTOR_L, l);
   setMotorStatus(MOTOR_R, r);
+}
+
+unsigned int sampleSetPoint(){
+  volatile unsigned int x;
+  x = analogRead(DISTANCE_POT);
+  x = map(x, 0, 1023, MIN_DISTANCE, MAX_DISTANCE);
+  return x;
 }
 
